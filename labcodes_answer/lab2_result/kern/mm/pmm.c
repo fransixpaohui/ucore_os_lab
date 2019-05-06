@@ -189,31 +189,32 @@ nr_free_pages(void) {
 /* pmm_init - initialize the physical memory management */
 static void
 page_init(void) {
-    struct e820map *memmap = (struct e820map *)(0x8000 + KERNBASE);
-    uint64_t maxpa = 0;
+    struct e820map *memmap = (struct e820map *)(0x8000 + KERNBASE);  // 获取物理内存信息
+    uint64_t maxpa = 0;  // 初始化最大页数量
 
     cprintf("e820map:\n");
+    // 下面的循环是负责找起始地址在范围内的最大可用段进行初始分页用的
     int i;
-    for (i = 0; i < memmap->nr_map; i ++) {
+    for (i = 0; i < memmap->nr_map; i ++) {  // 循环每一个可用的物理段
         uint64_t begin = memmap->map[i].addr, end = begin + memmap->map[i].size;
         cprintf("  memory: %08llx, [%08llx, %08llx], type = %d.\n",
                 memmap->map[i].size, begin, end - 1, memmap->map[i].type);
-        if (memmap->map[i].type == E820_ARM) {
+        if (memmap->map[i].type == E820_ARM) {  // 如果该段是一个RAM（可用内存）
             if (maxpa < end && begin < KMEMSIZE) {
                 maxpa = end;
             }
         }
     }
-    if (maxpa > KMEMSIZE) {
+    if (maxpa > KMEMSIZE) {  // 但是再大不能大过内核规定的范围。
         maxpa = KMEMSIZE;
     }
 
     extern char end[];
 
-    npage = maxpa / PGSIZE;
-    pages = (struct Page *)ROUNDUP((void *)end, PGSIZE);
+    npage = maxpa / PGSIZE;  // 页数 = 空间 / 页大小4k
+    pages = (struct Page *)ROUNDUP((void *)end, PGSIZE);  // todo 这儿写错了吧，应该把end改为 maxpa ？？？
 
-    for (i = 0; i < npage; i ++) {
+    for (i = 0; i < npage; i ++) {  // 初始化页面，为页分配算法初始化作准备
         SetPageReserved(pages + i);
     }
 

@@ -211,7 +211,7 @@ QEMUOPTS = -hda $(UCOREIMG)
 qemu-mon: $(UCOREIMG)
 	$(V)$(QEMU) -monitor stdio $(QEMUOPTS) -serial null
 qemu: $(UCOREIMG)
-	$(V)$(QEMU) -parallel stdio $(QEMUOPTS) -serial null
+	$(V)$(QEMU) -no-reboot -parallel stdio $(QEMUOPTS) -serial null
 
 qemu-nox: targets
 	$(V)$(QEMU) -serial mon:stdio $(QEMUOPTS) -nographic

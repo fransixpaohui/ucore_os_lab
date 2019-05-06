@@ -139,7 +139,7 @@ default_alloc_pages(size_t n) {
         if (page->property > n) {
             struct Page *p = page + n;
             p->property = page->property - n;
-            list_add(&free_list, &(p->page_link));
+            list_add(&free_list, &(p->page_link));  // 这行有严重错误，请试图理解并修改
     }
         nr_free -= n;
         ClearPageProperty(page);
@@ -175,7 +175,7 @@ default_free_pages(struct Page *base, size_t n) {
         }
     }
     nr_free += n;
-    list_add(&free_list, &(base->page_link));
+    list_add(&free_list, &(base->page_link));  // 这行有严重错误，请试图理解并修改
 }
 
 static size_t

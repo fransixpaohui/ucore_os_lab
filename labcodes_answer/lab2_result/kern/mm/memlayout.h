@@ -82,6 +82,17 @@ typedef uintptr_t pde_t;
 #define E820_ARM            1       // address range memory
 #define E820_ARR            2       // address range reserved
 
+// 实验手册：https://objectkuan.gitbooks.io/ucore-docs/lab2/lab2_3_3_2_search_phymem_layout.html
+// 以下来源：http://deltamaster.is-programmer.com/posts/37297.html
+// e820就是BIOS像x86架构（包括x86_64）上的操作系统引导程序提供物理内存信息的功能。
+// 当请求BIOS中断号15H，并且置操作码AX=E820H的时候，BIOS就会向调用者报告可用的物理地址区间等信息。
+// 以下来源：http://blog.sina.com.cn/s/blog_858820890101afrl.html
+// 这里的nr_map是内存段的数量
+// 每个内存段由无名的struct表示
+// addr字段表示内存段的起始地址
+// size字段表示内存段的大小
+// type表示内存段的类型，比如E820_RAM表示可用内存
+// E820MAX是一个宏，为32，说明最多可以有32个内存段
 struct e820map {
     int nr_map;
     struct {
@@ -92,6 +103,7 @@ struct e820map {
 };
 
 /* *
+ * 实验手册：https://objectkuan.gitbooks.io/ucore-docs/lab2/lab2_3_3_3_phymem_pagelevel.html
  * struct Page - Page descriptor structures. Each Page describes one
  * physical page. In kern/mm/pmm.h, you can find lots of useful functions
  * that convert Page to other data types, such as phyical address.

@@ -109,44 +109,48 @@ default_init_memmap(struct Page *base, size_t n) {
     assert(n > 0);
     struct Page *p = base;
     for (; p != base + n; p ++) {
-        assert(PageReserved(p));
-        p->flags = p->property = 0;
-        set_page_ref(p, 0);
+        assert(PageReserved(p));  // 意义不明的检查，可能是避免重新分配吧
+        p->flags = p->property = 0;  // 初始化页数量，置空property位和reserved位表示都不是首页且都可用
+        set_page_ref(p, 0);  // 初始化关联数量，没有被任何进程引用
     }
-    base->property = n;
-    SetPageProperty(base);
-    nr_free += n;
+    base->property = n;  // 初始化块大小（用首页的property表示首页所在块的页数量）
+    SetPageProperty(base);  // 首页标志，表示该页的property是有效的
+    nr_free += n;  // 初始化剩余空闲页计数器的值
+    // 这个地方 list_add_before 和 list_add 没差，因为是双向的循环链表，第二个节点加在第一个的前后是一样的
     list_add_before(&free_list, &(base->page_link));
 }
 
 static struct Page *
 default_alloc_pages(size_t n) {
-    assert(n > 0);
-    if (n > nr_free) {
+    assert(n > 0);  // 肯定不能分配负数啊hhh，分配0页也是没有意义的啊指针都返回不了
+    if (n > nr_free) {  // 如果要的太多剩下的不够就分配失败
         return NULL;
     }
     struct Page *page = NULL;
-    list_entry_t *le = &free_list;
+    list_entry_t *le = &free_list;  // 这个是页的链表，指向空闲页链表的头地址
+    // 这里有个迷惑性的东西，串起来的其实不是所有的空闲页，而是所有空闲块的首页，
+    // 所以每次next后得到的是下一块（或者说是下一块的首页）而不是下一页
     // TODO: optimize (next-fit)
-    while ((le = list_next(le)) != &free_list) {
+    while ((le = list_next(le)) != &free_list) {  // 遍历每一个空闲块的首页
         struct Page *p = le2page(le, page_link);
-        if (p->property >= n) {
+        if (p->property >= n) {  // FFMA 找到第一个大于大小的区块的首页并结束循环
+            // WFMA 或者 BFMA 只要改这里就好了
             page = p;
             break;
         }
     }
-    if (page != NULL) {
-        if (page->property > n) {
-            struct Page *p = page + n;
-            p->property = page->property - n;
-            SetPageProperty(p);
-            list_add_after(&(page->page_link), &(p->page_link));
+    if (page != NULL) {  // 如果找到某块可用
+        if (page->property > n) {  // 如果大小不是严格相等，需要在从空闲块列表移除前先分块
+            struct Page *p = page + n;  // 分块后没用完的剩余块的首页地址
+            p->property = page->property - n;  // 剩余块大小
+            SetPageProperty(p);  // 声明该页的 property 有效，是某块的首页
+            list_add_after(&(page->page_link), &(p->page_link));  // 链接进空闲块链表
         }
-        list_del(&(page->page_link));
-        nr_free -= n;
-        ClearPageProperty(page);
+        list_del(&(page->page_link));  // 删除目标块
+        nr_free -= n;  // 空闲页数量减少
+        ClearPageProperty(page);  // 使目标页大小标记失效
     }
-    return page;
+    return page;  // 返回目标块
 }
 
 static void
@@ -154,23 +158,26 @@ default_free_pages(struct Page *base, size_t n) {
     assert(n > 0);
     struct Page *p = base;
     for (; p != base + n; p ++) {
-        assert(!PageReserved(p) && !PageProperty(p));
+        assert(!PageReserved(p) && !PageProperty(p));  // 检查页是否正常
         p->flags = 0;
         set_page_ref(p, 0);
     }
-    base->property = n;
-    SetPageProperty(base);
-    list_entry_t *le = list_next(&free_list);
+    base->property = n;  // 新的空闲块大小
+    SetPageProperty(base);  // 空闲块使能
+    list_entry_t *le = list_next(&free_list);  // 进入空闲块链表
     while (le != &free_list) {
         p = le2page(le, page_link);
         le = list_next(le);
         // TODO: optimize
-        if (base + base->property == p) {
+        // 链表里面循环顺序是从小地址到大地址的，这里首先会激发向前合并，并更新base值
+        // 如果有后面的块需要合并，会在下一轮循环触发，所以不用担心前后不能一起合并的问题，
+        // 这里没有把目标块并进链表，而是把链表中的相邻块从链表弹出并吸收进自己
+        if (base + base->property == p) {  // 如果可以向后合并
             base->property += p->property;
             ClearPageProperty(p);
             list_del(&(p->page_link));
         }
-        else if (p + p->property == base) {
+        else if (p + p->property == base) {  // 如果可以向前合并
             p->property += base->property;
             ClearPageProperty(base);
             base = p;
@@ -179,19 +186,20 @@ default_free_pages(struct Page *base, size_t n) {
     }
     nr_free += n;
     le = list_next(&free_list);
+    // 到这里其实还没有把目标块链接进空闲页链表，下面是寻找插入位置的操作
     while (le != &free_list) {
         p = le2page(le, page_link);
-        if (base + base->property <= p) {
+        if (base + base->property <= p) {  // 从小到大的循环，插入到第一个大于base上界的节点的前面
             assert(base + base->property != p);
             break;
         }
         le = list_next(le);
     }
-    list_add_before(le, &(base->page_link));
+    list_add_before(le, &(base->page_link));  // 插入到目标前面
 }
 
 static size_t
-default_nr_free_pages(void) {
+default_nr_free_pages(void) {  // 返回剩余空闲页数
     return nr_free;
 }
 
