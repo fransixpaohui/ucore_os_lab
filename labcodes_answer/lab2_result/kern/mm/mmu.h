@@ -200,10 +200,10 @@ struct taskstate {
 // To construct a linear address la from PDX(la), PTX(la), and PGOFF(la),
 // use PGADDR(PDX(la), PTX(la), PGOFF(la)).
 
-// page directory index
+// page directory index 虚拟地址为la的页在页目录表中的下标
 #define PDX(la) ((((uintptr_t)(la)) >> PDXSHIFT) & 0x3FF)
 
-// page table index
+// page table index 虚拟地址为la的页在页表中的下标
 #define PTX(la) ((((uintptr_t)(la)) >> PTXSHIFT) & 0x3FF)
 
 // page number field of address
@@ -216,7 +216,7 @@ struct taskstate {
 #define PGADDR(d, t, o) ((uintptr_t)((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
 
 // address in page table or page directory entry
-#define PTE_ADDR(pte)   ((uintptr_t)(pte) & ~0xFFF)
+#define PTE_ADDR(pte)   ((uintptr_t)(pte) & ~0xFFF)  // 保留12位以上的，置空低位（4K）
 #define PDE_ADDR(pde)   PTE_ADDR(pde)
 
 /* page directory and page table constants */

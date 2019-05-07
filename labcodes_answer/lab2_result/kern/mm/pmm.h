@@ -75,12 +75,12 @@ extern struct Page *pages;
 extern size_t npage;
 
 static inline ppn_t
-page2ppn(struct Page *page) {
+page2ppn(struct Page *page) {  // ppn是页偏移量，比如第三页，ppn就是3-1=2
     return page - pages;
 }
 
 static inline uintptr_t
-page2pa(struct Page *page) {
+page2pa(struct Page *page) {  // pa是页地址偏移量，比如第三页每页4k，就是2*4k=8k
     return page2ppn(page) << PGSHIFT;
 }
 
