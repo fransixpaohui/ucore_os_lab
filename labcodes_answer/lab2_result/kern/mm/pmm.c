@@ -208,10 +208,11 @@ page_init(void) {
     if (maxpa > KMEMSIZE) {  // 但是再大不能大过内核规定的范围。
         maxpa = KMEMSIZE;
     }
-
     // 这里开始的end和上面的end就是两码事了，这个end的值是从外部赋予的，是kernel的结束地址，这个地址是在kernel.ld中定义的，
+    // end的来历看这里 https://chyyuu.gitbooks.io/ucore_os_docs/content/lab2/lab2_3_7_phymemlab_concepts.html
     extern char end[];
 
+    // 以下代码在实验指导书中有更详细的解释 https://chyyuu.gitbooks.io/ucore_os_docs/content/lab2/lab2_3_3_3_phymem_pagelevel.html
     npage = maxpa / PGSIZE;  // 页数 = 空间 / 页大小4k
     //  我们从这个地址所在的下一个页开始(pages)写入系统页的信息(将所有的Page写入这个地址)
     pages = (struct Page *)ROUNDUP((void *)end, PGSIZE);
@@ -308,13 +309,13 @@ pmm_init(void) {
 
     // map all physical memory to linear memory with base linear addr KERNBASE
     // linear_addr KERNBASE ~ KERNBASE + KMEMSIZE = phy_addr 0 ~ KMEMSIZE
-    boot_map_segment(boot_pgdir, KERNBASE, KMEMSIZE, 0, PTE_W);  // todo 不明白这个函数怎么enable分页的
+    boot_map_segment(boot_pgdir, KERNBASE, KMEMSIZE, 0, PTE_W);
 
     // Since we are using bootloader's GDT,
     // we should reload gdt (second time, the last time) to get user segments and the TSS
     // map virtual_addr 0 ~ 4G = linear_addr 0 ~ 4G
     // then set kernel stack (ss:esp) in TSS, setup TSS in gdt, load TSS
-    gdt_init();  // todo 不知道有什么用
+    gdt_init();  //
 
     //now the basic virtual memory map(see memalyout.h) is established.
     //check the correctness of the basic virtual memory map.
