@@ -458,17 +458,17 @@ page_remove(pde_t *pgdir, uintptr_t la) {
 //note: PT is changed, so the TLB need to be invalidate 
 int
 page_insert(pde_t *pgdir, struct Page *page, uintptr_t la, uint32_t perm) {
-    pte_t *ptep = get_pte(pgdir, la, 1);
+    pte_t *ptep = get_pte(pgdir, la, 1);  // 拿到目标地址的页
     if (ptep == NULL) {
         return -E_NO_MEM;
     }
     page_ref_inc(page);
-    if (*ptep & PTE_P) {
+    if (*ptep & PTE_P) {  // 该页在内存中已经存在
         struct Page *p = pte2page(*ptep);
-        if (p == page) {
+        if (p == page) {  // 如果就是同一页，没必要再增加一次ref
             page_ref_dec(page);
         }
-        else {
+        else {  // 如果不是同一页，新的页会替换掉老的（虽然不知道为什么会冲突）
             page_remove_pte(pgdir, la, ptep);
         }
     }
@@ -490,8 +490,8 @@ tlb_invalidate(pde_t *pgdir, uintptr_t la) {
 //                  - allocate a page size memory & setup an addr map
 //                  - pa<->la with linear address la and the PDT pgdir
 struct Page *
-pgdir_alloc_page(pde_t *pgdir, uintptr_t la, uint32_t perm) {
-    struct Page *page = alloc_page();
+pgdir_alloc_page(pde_t *pgdir, uintptr_t la, uint32_t perm) {  // 这个函数不再检查对应的物理页是否存在，而是选择直接新分配一个
+    struct Page *page = alloc_page();  // 这里随便分配了一个页
     if (page != NULL) {
         if (page_insert(pgdir, page, la, perm) != 0) {
             free_page(page);

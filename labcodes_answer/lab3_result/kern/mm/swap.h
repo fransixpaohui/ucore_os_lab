@@ -40,6 +40,7 @@ struct swap_manager
      /* Called when tick interrupt occured */
      int (*tick_event)      (struct mm_struct *mm);
      /* Called when map a swappable page into the mm_struct */
+     // 并不是任意页都可以换出的，通过调用 map_swappable 把允许换出的页加入辅助链表等待换出
      int (*map_swappable)   (struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in);
      /* When a page is marked as shared, this routine is called to
       * delete the addr entry from the swap manager */

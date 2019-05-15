@@ -11,8 +11,9 @@ struct mm_struct;
 
 // the virtual continuous memory area(vma)
 struct vma_struct {
-    struct mm_struct *vm_mm; // the set of vma using the same PDT 
-    uintptr_t vm_start;      //    start addr of vma    
+    // 使用同一个一级页表的虚拟存储区域的集合，mm是vma的高级结构，一个mm包含多个vma
+    struct mm_struct *vm_mm; // the set of vma using the same PDT
+    uintptr_t vm_start;      //    start addr of vma
     uintptr_t vm_end;        // end addr of vma
     uint32_t vm_flags;       // flags of vma
     list_entry_t list_link;  // linear list link which sorted by start addr of vma
@@ -27,10 +28,14 @@ struct vma_struct {
 
 // the control struct for a set of vma using the same PDT
 struct mm_struct {
+    // mmap_list是双向链表头，链接了所有属于同一页目录表的虚拟内存空间，里面装的都是vma_struct
     list_entry_t mmap_list;        // linear list link which sorted by start addr of vma
+    // mmap_cache是指向最后正在使用的虚拟内存空间，缓存起来避免频繁查询链表
     struct vma_struct *mmap_cache; // current accessed vma, used for speed purpose
     pde_t *pgdir;                  // the PDT of these vma
     int map_count;                 // the count of these vma
+    // sm_priv point to the addr of pra_list_head in fifo
+    // pra_list_head 是可换出页的链表头对象，链表里面的元素都是 page->pra_page_link
     void *sm_priv;                   // the private data for swap manager
 };
 

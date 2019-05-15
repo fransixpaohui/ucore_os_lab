@@ -65,7 +65,7 @@ swap_tick_event(struct mm_struct *mm)
 
 int
 swap_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in)
-{
+{  // 个人理解，并不是每个换入的页都允许换出，如果这一页是允许换出的，就调用这个函数加入候选换出链表
      return sm->map_swappable(mm, addr, page, swap_in);
 }
 
@@ -96,42 +96,42 @@ swap_out(struct mm_struct *mm, int n, int in_tick)
 
           //cprintf("SWAP: choose victim page 0x%08x\n", page);
           
-          v=page->pra_vaddr; 
-          pte_t *ptep = get_pte(mm->pgdir, v, 0);
+          v=page->pra_vaddr;  // 虚拟地址
+          pte_t *ptep = get_pte(mm->pgdir, v, 0);  // 换出页的页表项
           assert((*ptep & PTE_P) != 0);
 
           if (swapfs_write( (page->pra_vaddr/PGSIZE+1)<<8, page) != 0) {
                     cprintf("SWAP: failed to save\n");
-                    sm->map_swappable(mm, v, page, 0);
+                    sm->map_swappable(mm, v, page, 0);  // 失败后的undo
                     continue;
           }
           else {
                     cprintf("swap_out: i %d, store page in vaddr 0x%x to disk swap entry %d\n", i, v, page->pra_vaddr/PGSIZE+1);
-                    *ptep = (page->pra_vaddr/PGSIZE+1)<<8;
-                    free_page(page);
+                    *ptep = (page->pra_vaddr/PGSIZE+1)<<8;  // 存在位置空
+                    free_page(page);  // 内存回收
           }
           
-          tlb_invalidate(mm->pgdir, v);
+          tlb_invalidate(mm->pgdir, v);  // 刷新快表
      }
      return i;
 }
 
 int
 swap_in(struct mm_struct *mm, uintptr_t addr, struct Page **ptr_result)
-{
-     struct Page *result = alloc_page();
+{  // 这里的 addr 是物理地址
+     struct Page *result = alloc_page();  // 在内存中随便分配一页
      assert(result!=NULL);
 
      pte_t *ptep = get_pte(mm->pgdir, addr, 0);
      // cprintf("SWAP: load ptep %x swap entry %d to vaddr 0x%08x, page %x, No %d\n", ptep, (*ptep)>>8, addr, result, (result-pages));
     
      int r;
-     if ((r = swapfs_read((*ptep), result)) != 0)
+     if ((r = swapfs_read((*ptep), result)) != 0)  // 从特定扇区读入
      {
         assert(r!=0);
      }
      cprintf("swap_in: load disk swap entry %d with swap_page in vadr 0x%x\n", (*ptep)>>8, addr);
-     *ptr_result=result;
+     *ptr_result=result;  // 指向指针的指针？
      return 0;
 }
 
