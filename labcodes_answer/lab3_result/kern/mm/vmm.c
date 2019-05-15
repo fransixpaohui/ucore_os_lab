@@ -75,10 +75,10 @@ find_vma(struct mm_struct *mm, uintptr_t addr) {
     struct vma_struct *vma = NULL;
     if (mm != NULL) {
         vma = mm->mmap_cache;
-        if (!(vma != NULL && vma->vm_start <= addr && vma->vm_end > addr)) {
+        if (!(vma != NULL && vma->vm_start <= addr && vma->vm_end > addr)) {  // 如果mm缓存不是我们想要的vma
                 bool found = 0;
                 list_entry_t *list = &(mm->mmap_list), *le = list;
-                while ((le = list_next(le)) != list) {
+                while ((le = list_next(le)) != list) {  // 遍历链表找目标vma
                     vma = le2vma(le, list_link);
                     if (vma->vm_start<=addr && addr < vma->vm_end) {
                         found = 1;
@@ -89,7 +89,7 @@ find_vma(struct mm_struct *mm, uintptr_t addr) {
                     vma = NULL;
                 }
         }
-        if (vma != NULL) {
+        if (vma != NULL) {  // 找到的话更新缓存
             mm->mmap_cache = vma;
         }
     }
@@ -303,6 +303,7 @@ volatile unsigned int pgfault_num=0;
  */
 int
 do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
+    // https://chyyuu.gitbooks.io/ucore_os_docs/content/lab3/lab3_4_page_fault_handler.html
     int ret = -E_INVAL;
     //try to find a vma which include addr
     struct vma_struct *vma = find_vma(mm, addr);
@@ -413,11 +414,11 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
            // and call page_insert to map the phy addr with logical addr
         if(swap_init_ok) {
             struct Page *page=NULL;
-            if ((ret = swap_in(mm, addr, &page)) != 0) {
+            if ((ret = swap_in(mm, addr, &page)) != 0) {  // 数据读入page
                 cprintf("swap_in in do_pgfault failed\n");
                 goto failed;
-            }    
-            page_insert(mm->pgdir, page, addr, perm);
+            }
+            page_insert(mm->pgdir, page, addr, perm);  // 建立页表项和物理页的关系（初始化页表项）
             swap_map_swappable(mm, addr, page, 1);
             page->pra_vaddr = addr;
         }
